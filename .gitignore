@@ -1,0 +1,7 @@
+*.zip
+old/
+*.log
+*.pid
+status
+.DS_Store
+

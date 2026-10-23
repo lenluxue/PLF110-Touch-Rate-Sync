@@ -1,0 +1,7 @@
+id=touch_rate_sync
+name=Touch Rate Sync
+version=v1.0.3
+versionCode=10003
+author=local
+description=Systemless custom refresh-rate to touch report-rate sync with a 1.5s watchdog for PLF110/S3910.
+

@@ -1,0 +1,9 @@
+# One package name per line.
+# Only used when ONLY_FOR_LISTED_APPS=1 in config.conf.
+#
+# com.tencent.tmgp.sgame
+# com.tencent.tmgp.pubgmhd
+# com.tencent.tmgp.cod
+# com.tencent.tmgp.dfm
+# com.miHoYo.Yuanshen
+
