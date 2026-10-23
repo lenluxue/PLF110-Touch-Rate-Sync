@@ -29,7 +29,7 @@ causes the service to exit without writing the touch node.
 |---:|---:|---|
 | 30Hz | 120Hz | Lowest available rate |
 | 60Hz | 120Hz | |
-| 90Hz | 180Hz | 200Hz is not accepted by this controller |
+| 90Hz | 180Hz | |
 | 120Hz | 300Hz | Writes raw value 288; platform maps 288 to 300 |
 | 144Hz | 320Hz | Writes raw value 360; effective label is 320Hz |
 
