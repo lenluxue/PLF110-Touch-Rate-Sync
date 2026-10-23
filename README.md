@@ -29,10 +29,11 @@ causes the service to exit without writing the touch node.
 | 60Hz | 120Hz | |
 | 90Hz | 180Hz | 200Hz is not accepted by this controller |
 | 120Hz | 300Hz | Writes raw value 288; platform maps 288 to 300 |
-| 144Hz | 360Hz | |
+| 144Hz | 320Hz | Writes raw value 360; effective label is 320Hz |
 
 The S3910 driver accepts `120/180/240/288/360` only. Edit `RATE_MAP` in
-`config.conf` to change the mapping.
+`config.conf` to change the mapping. `EFFECTIVE_RATE_MAP` supplies display
+labels for raw controller values, such as `120:288:300` and `144:360:320`.
 
 ## Install
 

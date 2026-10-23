@@ -13,7 +13,7 @@ LOG=$STATE_DIR/daemon.log
 POLL_INTERVAL=3
 WATCHDOG_INTERVAL=1.5
 RATE_MAP="30:120 60:120 90:180 120:288 144:360"
-EFFECTIVE_RATE_MAP="120:300"
+EFFECTIVE_RATE_MAP="120:288:300 144:360:320"
 SUPPORTED_RATES="120 180 240 288 360"
 FALLBACK=nearest_high
 SCALE_NUM=5
@@ -257,13 +257,15 @@ effective_for_target() {
     rate=$2
     for pair in ${EFFECTIVE_RATE_MAP:-}; do
         case "$pair" in
-            *:*) ;;
+            *:*:*) ;;
             *) continue ;;
         esac
         key=${pair%%:*}
-        value=${pair#*:}
-        if [ "$key" = "$refresh" ] && [ "$rate" = "288" ]; then
-            printf '%s\n' "$value"
+        rest=${pair#*:}
+        node_rate=${rest%%:*}
+        effective_rate=${rest#*:}
+        if [ "$key" = "$refresh" ] && [ "$node_rate" = "$rate" ]; then
+            printf '%s\n' "$effective_rate"
             return 0
         fi
     done
