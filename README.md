@@ -1,5 +1,7 @@
 # PLF110 Touch Rate Sync
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Systemless touch report-rate sync module for OnePlus PLF110 / Synaptics S3910.
 It uses the existing Binder touch interface and does not modify partitions or
 files under `/system`, `/vendor`, or `/odm`.
