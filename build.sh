@@ -15,5 +15,6 @@ zip -r9 "$OUT" \
     action.sh \
     uninstall.sh \
     README.md \
-    bin/touch_rate_daemon.sh
+    bin/touch_rate_daemon.sh \
+    bin/device_check.sh
 

@@ -4,6 +4,13 @@ Systemless touch report-rate sync module for OnePlus PLF110 / Synaptics S3910.
 It uses the existing Binder touch interface and does not modify partitions or
 files under `/system`, `/vendor`, or `/odm`.
 
+## Device requirement
+
+The service validates `ro.product.model`, `ro.product.vendor.model`,
+`ro.product.device`, and `ro.boot.prjname` before starting. The defaults are
+`ALLOWED_MODELS="PLF110"` and `ALLOWED_PROJECTS="24825"`. A mismatched device
+causes the service to exit without writing the touch node.
+
 ## Features
 
 - Polls display refresh rate and the foreground package every 3 seconds.
@@ -50,6 +57,8 @@ Edit `/data/adb/modules/touch_rate_sync/config.conf`:
 - `ONLY_FOR_LISTED_APPS=1`: apply only to packages in `apps.txt`.
 - `DRY_RUN=1`: log intended changes without writing.
 - `RESTORE_RATE`: value used when inactive, default `0`.
+- `ALLOWED_MODELS`: accepted device model names, default `PLF110`.
+- `ALLOWED_PROJECTS`: accepted project ids, default `24825`.
 
 ## Runtime files
 

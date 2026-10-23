@@ -1,13 +1,33 @@
 #!/system/bin/sh
 
 MODDIR=${0%/*}
-STATE_DIR=/data/adb/touch_rate_sync
+STATE_DIR=${TRS_STATE_DIR:-/data/adb/touch_rate_sync}
 DAEMON=$MODDIR/bin/touch_rate_daemon.sh
+CONFIG_FILE=${TRS_CONFIG:-$MODDIR/config.conf}
+
+ALLOWED_MODELS=PLF110
+ALLOWED_PROJECTS=24825
+
+[ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE"
 
 [ -e "$MODDIR/disable" ] && exit 0
 [ -x "$DAEMON" ] || chmod 0755 "$DAEMON" 2>/dev/null
 mkdir -p "$STATE_DIR" 2>/dev/null
 chmod 0700 "$STATE_DIR" 2>/dev/null
+
+log_service() {
+    printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$STATE_DIR/daemon.log" 2>/dev/null || true
+}
+
+if [ ! -r "$MODDIR/bin/device_check.sh" ]; then
+    log_service "ERROR missing device_check.sh"
+    exit 1
+fi
+. "$MODDIR/bin/device_check.sh"
+if ! device_check; then
+    log_service "device check failed: $DEVICE_SUMMARY"
+    exit 0
+fi
 
 i=0
 while [ "$(getprop sys.boot_completed)" != 1 ] && [ "$i" -lt 120 ]; do

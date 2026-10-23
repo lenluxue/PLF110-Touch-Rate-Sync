@@ -27,6 +27,8 @@ LOG_MAX_BYTES=131072
 TOUCH_HIDL=/odm/bin/touchHidlTest
 TOUCH_NODE=182
 HIDL_DEVICE=0
+ALLOWED_MODELS=PLF110
+ALLOWED_PROJECTS=24825
 
 CONFIG_FILE=${TRS_CONFIG:-$MODDIR/config.conf}
 [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE"
@@ -51,6 +53,16 @@ log() {
     fi
     printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG" 2>/dev/null || true
 }
+
+if [ ! -r "$MODDIR/bin/device_check.sh" ]; then
+    log "ERROR missing device_check.sh"
+    exit 1
+fi
+. "$MODDIR/bin/device_check.sh"
+if ! device_check; then
+    log "device check failed: $DEVICE_SUMMARY"
+    exit 1
+fi
 
 log_limited() {
     now=$(date +%s)
@@ -270,6 +282,7 @@ status_write() {
         printf 'node_current=%s\n' "$CURRENT"
         printf 'last_reason=%s\n' "$LAST_REASON"
         printf 'dry_run=%s\n' "$DRY_RUN"
+        printf 'device=%s\n' "$DEVICE_SUMMARY"
         printf 'pid=%s\n' "$$"
     } > "$STATUS.tmp" 2>/dev/null && mv -f "$STATUS.tmp" "$STATUS" 2>/dev/null || rm -f "$STATUS.tmp"
 }
@@ -327,7 +340,7 @@ APP_ALLOWED=1
 LAST_APPLIED=-
 LAST_REASON=startup
 
-log "start pid=$$ config=$CONFIG_FILE dry_run=$DRY_RUN"
+log "start pid=$$ config=$CONFIG_FILE dry_run=$DRY_RUN device=$DEVICE_SUMMARY"
 status_write
 
 while :; do
