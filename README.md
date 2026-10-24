@@ -17,7 +17,7 @@ causes the service to exit without writing the touch node.
 
 - Polls display refresh rate and the foreground package every 3 seconds.
 - Writes the touch report rate only when the desired value changes.
-- Reads the live report rate every 1.5 seconds and reapplies the target if it
+- Reads the live report rate every 10 seconds and reapplies the target if it
   is replaced by another service.
 - Verifies every write by reading the value back.
 - Restores the default value when the screen is off, the package is not listed,
@@ -54,7 +54,7 @@ kill "$(cat /data/adb/touch_rate_sync/pid)"
 Edit `/data/adb/modules/touch_rate_sync/config.conf`:
 
 - `POLL_INTERVAL`: refresh-rate and foreground polling interval, integer seconds.
-- `WATCHDOG_INTERVAL`: report-rate readback interval.
+- `WATCHDOG_INTERVAL`: report-rate readback interval, default 10 seconds.
 - `RATE_MAP`: refresh-rate to report-rate mapping.
 - `FALLBACK`: fallback for unmapped refresh rates.
 - `ONLY_FOR_LISTED_APPS=1`: apply only to packages in `apps.txt`.
