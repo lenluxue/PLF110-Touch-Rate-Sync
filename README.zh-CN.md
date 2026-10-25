@@ -70,7 +70,9 @@ kill "$(cat /data/adb/touch_rate_sync/pid)"
 - 日志：`/data/adb/touch_rate_sync/daemon.log`
 - PID：`/data/adb/touch_rate_sync/pid`
 
-模块管理器的 Action 按钮会显示当前状态和最近的日志。
+点击模块管理器的 Action 按钮会显示状态并生成中文诊断压缩包，优先保存到
+`/sdcard/Download`。采集内容包括设备与模块状态、触控节点、刷新率、模块日志及
+相关系统日志；脚本只读取信息，不会写入触控节点，也不会收集账户令牌或完整系统属性。
 
 ## 构建
 

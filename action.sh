@@ -1,15 +1,24 @@
 #!/system/bin/sh
 
+MODDIR=${0%/*}
 STATE_DIR=/data/adb/touch_rate_sync
+DIAG="$MODDIR/bin/collect_diag.sh"
 
-echo "Touch Rate Sync"
-echo "==============="
+echo 'PLF110 触控采样率模块'
+echo '===================='
+echo '感谢慕容提供诊断思路'
 if [ -r "$STATE_DIR/status" ]; then
     cat "$STATE_DIR/status"
 else
-    echo "status: not started"
+    echo '运行状态：未发现状态文件'
 fi
-echo
-echo "Recent log:"
-tail -n 30 "$STATE_DIR/daemon.log" 2>/dev/null || true
 
+echo
+echo '正在收集只读诊断信息……'
+if [ -x "$DIAG" ]; then
+    "$DIAG"
+elif [ -r "$DIAG" ]; then
+    /system/bin/sh "$DIAG"
+else
+    echo "诊断失败：找不到采集脚本 $DIAG"
+fi

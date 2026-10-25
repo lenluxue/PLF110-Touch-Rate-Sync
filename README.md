@@ -69,7 +69,9 @@ Edit `/data/adb/modules/touch_rate_sync/config.conf`:
 - Log: `/data/adb/touch_rate_sync/daemon.log`
 - PID: `/data/adb/touch_rate_sync/pid`
 
-The module Action button shows the current status and recent log lines.
+The module Action button shows the current status and creates a read-only diagnostic archive,
+preferably under `/sdcard/Download`. It collects module, touch, display, and relevant log
+information without writing the touch node or collecting account tokens/full system properties.
 
 ## Build
 
