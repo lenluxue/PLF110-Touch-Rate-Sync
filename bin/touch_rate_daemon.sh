@@ -11,7 +11,7 @@ STATUS=$STATE_DIR/status
 LOG=$STATE_DIR/daemon.log
 
 POLL_INTERVAL=3
-WATCHDOG_INTERVAL=10
+WATCHDOG_INTERVAL=1.5
 RATE_MAP="30:120 60:120 90:180 120:288 144:360"
 EFFECTIVE_RATE_MAP="120:288:300 144:360:320"
 SUPPORTED_RATES="120 180 240 288 360"
@@ -73,12 +73,19 @@ log_limited() {
 }
 
 read_rate() {
-    out=$(timeout 2 "$TOUCH_HIDL" -c rb "$HIDL_DEVICE" "$TOUCH_NODE" 2>&1) || return 1
-    value=$(printf '%s\n' "$out" | tail -n 1 | tr -cd '0-9')
-    case "$value" in
-        ''|*[!0-9]*) return 1 ;;
-    esac
-    printf '%s\n' "$value"
+    local rate_output= rate_line= rate_digit=
+    RATE_VALUE=
+    rate_output=$(/system/bin/timeout 2 "$TOUCH_HIDL" -c rb "$HIDL_DEVICE" "$TOUCH_NODE" 2>&1) || return 1
+    rate_line=${rate_output##*'
+'}
+    while [ -n "$rate_line" ]; do
+        rate_digit=${rate_line%"${rate_line#?}"}
+        rate_line=${rate_line#?}
+        case "$rate_digit" in
+            [0-9]) RATE_VALUE=$RATE_VALUE$rate_digit ;;
+        esac
+    done
+    [ -n "$RATE_VALUE" ]
 }
 
 write_rate() {
@@ -92,9 +99,10 @@ write_rate() {
     fi
 
     log "write rate=$want reason=$reason"
-    timeout 2 "$TOUCH_HIDL" -c wb "$HIDL_DEVICE" "$TOUCH_NODE" "$want" >/dev/null 2>&1 || true
+    /system/bin/timeout 2 "$TOUCH_HIDL" -c wb "$HIDL_DEVICE" "$TOUCH_NODE" "$want" >/dev/null 2>&1 || true
     sleep 0.12
-    got=$(read_rate 2>/dev/null) || got=
+    read_rate 2>/dev/null || true
+    got=$RATE_VALUE
     if [ "$got" = "$want" ]; then
         CURRENT=$got
         log "verified rate=$want"
@@ -102,9 +110,10 @@ write_rate() {
     fi
 
     sleep 0.25
-    timeout 2 "$TOUCH_HIDL" -c wb "$HIDL_DEVICE" "$TOUCH_NODE" "$want" >/dev/null 2>&1 || true
+    /system/bin/timeout 2 "$TOUCH_HIDL" -c wb "$HIDL_DEVICE" "$TOUCH_NODE" "$want" >/dev/null 2>&1 || true
     sleep 0.12
-    got=$(read_rate 2>/dev/null) || got=
+    read_rate 2>/dev/null || true
+    got=$RATE_VALUE
     if [ "$got" = "$want" ]; then
         CURRENT=$got
         log "verified rate=$want after retry"
@@ -117,27 +126,62 @@ write_rate() {
 }
 
 read_display() {
-    out=$(timeout 4 cmd display get-displays 2>/dev/null) || return 1
-    [ -n "$out" ] || return 1
+    local display_output= display_line= display_state=UNKNOWN
+    local display_render= display_integer= display_fraction= display_digit=0
+    display_output=$(/system/bin/timeout 4 cmd display get-displays 2>/dev/null) || return 1
+    while IFS= read -r display_line; do
+        case "$display_line" in
+            'Display id '*) break ;;
+        esac
+    done <<EOF
+$display_output
+EOF
+    case "$display_line" in
+        'Display id '*) ;;
+        *) return 1 ;;
+    esac
 
-    state=$(printf '%s\n' "$out" | sed -n 's/.*state \([A-Z_][A-Z_]*\).*/\1/p' | head -n 1)
-    render=$(printf '%s\n' "$out" | sed -n 's/.*renderFrameRate \([0-9][0-9.]*\).*/\1/p' | head -n 1)
-    case "$render" in
+    case "$display_line" in
+        *', state '*)
+            display_state=${display_line#*', state '}
+            display_state=${display_state%%,*}
+            case "$display_state" in
+                ''|*[!A-Z_]*) display_state=UNKNOWN ;;
+            esac
+            ;;
+    esac
+    case "$display_line" in
+        *'renderFrameRate '*)
+            display_render=${display_line#*'renderFrameRate '}
+            display_render=${display_render%%,*}
+            ;;
+        *) return 1 ;;
+    esac
+    case "$display_render" in
         ''|*[!0-9.]*) return 1 ;;
     esac
-
-    rounded=$(awk -v r="$render" 'BEGIN { printf "%d", int(r + 0.5) }' 2>/dev/null)
-    case "$rounded" in
-        ''|*[!0-9]*) return 1 ;;
+    display_integer=${display_render%%.*}
+    [ -n "$display_integer" ] || return 1
+    case "$display_render" in
+        *.*)
+            display_fraction=${display_render#*.}
+            case "$display_fraction" in
+                *[!0-9]*) return 1 ;;
+            esac
+            display_digit=${display_fraction%"${display_fraction#?}"}
+            ;;
     esac
 
-    SCREEN_STATE=${state:-UNKNOWN}
-    REFRESH=$rounded
+    REFRESH=$((10#$display_integer))
+    if [ "${display_digit:-0}" -ge 5 ]; then
+        REFRESH=$((REFRESH + 1))
+    fi
+    SCREEN_STATE=$display_state
     return 0
 }
 
 read_screen_fallback() {
-    wake=$(timeout 3 dumpsys power 2>/dev/null | sed -n 's/.*mWakefulness=\([A-Za-z_]*\).*/\1/p' | head -n 1)
+    wake=$(/system/bin/timeout 3 dumpsys power 2>/dev/null | sed -n 's/.*mWakefulness=\([A-Za-z_]*\).*/\1/p' | head -n 1)
     case "$wake" in
         Awake) SCREEN_STATE=ON ;;
         '') return 1 ;;
@@ -147,10 +191,10 @@ read_screen_fallback() {
 }
 
 read_foreground() {
-    pkg=$(timeout 4 dumpsys window 2>/dev/null | sed -n 's/.*mFocusedApp=ActivityRecord{[^ ]* u[0-9][0-9]* \([^ /]*\)\/.*/\1/p' | head -n 1)
+    pkg=$(/system/bin/timeout 4 dumpsys window 2>/dev/null | sed -n 's/.*mFocusedApp=ActivityRecord{[^ ]* u[0-9][0-9]* \([^ /]*\)\/.*/\1/p' | head -n 1)
 
     if [ -z "$pkg" ]; then
-        pkg=$(timeout 4 dumpsys activity activities 2>/dev/null | sed -n 's/.*topResumedActivity=ActivityRecord{[^ ]* u[0-9][0-9]* \([^ /]*\)\/.*/\1/p' | head -n 1)
+        pkg=$(/system/bin/timeout 4 dumpsys activity activities 2>/dev/null | sed -n 's/.*topResumedActivity=ActivityRecord{[^ ]* u[0-9][0-9]* \([^ /]*\)\/.*/\1/p' | head -n 1)
     fi
 
     FOREGROUND=${pkg:-?}
@@ -309,7 +353,7 @@ echo $$ > "$PIDFILE"
 cleanup() {
     trap - EXIT INT TERM HUP
     if [ "${RESTORE_ON_EXIT:-1}" = 1 ] && [ "${DRY_RUN:-0}" != 1 ]; then
-        timeout 2 "$TOUCH_HIDL" -c wb "$HIDL_DEVICE" "$TOUCH_NODE" "$RESTORE_RATE" >/dev/null 2>&1 || true
+        /system/bin/timeout 2 "$TOUCH_HIDL" -c wb "$HIDL_DEVICE" "$TOUCH_NODE" "$RESTORE_RATE" >/dev/null 2>&1 || true
         log "exit restore rate=$RESTORE_RATE"
     fi
     rm -f "$PIDFILE"
@@ -335,6 +379,7 @@ HAVE_DISPLAY=0
 SCREEN_STATE=UNKNOWN
 REFRESH=0
 FOREGROUND=-
+[ "$ONLY_FOR_LISTED_APPS" = 1 ] || FOREGROUND=all
 TARGET=$RESTORE_RATE
 EFFECTIVE_TARGET=$RESTORE_RATE
 CURRENT=-
@@ -359,14 +404,16 @@ while :; do
     if [ "$now" -ge "$NEXT_POLL" ]; then
         if read_display; then
             HAVE_DISPLAY=1
-            if [ "$SCREEN_STATE" = ON ]; then
-                read_foreground
-            else
-                FOREGROUND=off
+            if [ "$ONLY_FOR_LISTED_APPS" = 1 ]; then
+                if [ "$SCREEN_STATE" = ON ]; then
+                    read_foreground
+                else
+                    FOREGROUND=off
+                fi
             fi
         else
             log_limited "display read failed"
-            if read_screen_fallback && [ "$SCREEN_STATE" != ON ]; then
+            if read_screen_fallback && [ "$SCREEN_STATE" != ON ] && [ "$ONLY_FOR_LISTED_APPS" = 1 ]; then
                 FOREGROUND=off
             fi
         fi
@@ -400,7 +447,8 @@ while :; do
     fi
 
     if [ "$HAVE_DISPLAY" = 1 ] && [ "$SCREEN_STATE" = ON ] && [ "$APP_ALLOWED" = 1 ] && [ "$TARGET" -gt 0 ]; then
-        CURRENT=$(read_rate 2>/dev/null) || CURRENT=
+        read_rate 2>/dev/null || true
+        CURRENT=$RATE_VALUE
         if [ "$CURRENT" != "$TARGET" ]; then
             write_rate "$TARGET" "sync refresh=$REFRESH app=$FOREGROUND current=${CURRENT:-unknown} effective=$EFFECTIVE_TARGET"
             LAST_APPLIED=$TARGET
@@ -408,7 +456,8 @@ while :; do
         fi
     else
         if [ "$LAST_APPLIED" != "$RESTORE_RATE" ]; then
-            CURRENT=$(read_rate 2>/dev/null) || CURRENT=
+            read_rate 2>/dev/null || true
+            CURRENT=$RATE_VALUE
             if [ "$CURRENT" != "$RESTORE_RATE" ]; then
                 write_rate "$RESTORE_RATE" "inactive screen=$SCREEN_STATE app=$FOREGROUND"
             fi

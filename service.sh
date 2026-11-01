@@ -44,9 +44,15 @@ while [ "$i" -lt 60 ]; do
     i=$((i + 1))
 done
 
+BUSYBOX=/data/adb/ksu/bin/busybox
+if [ ! -x "$BUSYBOX" ]; then
+    log_service "ERROR missing BusyBox: $BUSYBOX"
+    exit 1
+fi
+
 if command -v setsid >/dev/null 2>&1; then
-    setsid /system/bin/sh "$DAEMON" </dev/null >/dev/null 2>&1 &
+    ASH_STANDALONE=1 setsid "$BUSYBOX" sh "$DAEMON" </dev/null >/dev/null 2>&1 &
 else
-    /system/bin/sh "$DAEMON" </dev/null >/dev/null 2>&1 &
+    ASH_STANDALONE=1 "$BUSYBOX" sh "$DAEMON" </dev/null >/dev/null 2>&1 &
 fi
 

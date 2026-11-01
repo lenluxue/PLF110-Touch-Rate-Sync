@@ -1,7 +1,7 @@
-id=touch_rate_sync
-name=Touch Rate Sync
-version=v1.0.5
-versionCode=10005
-author=local
-description=Systemless custom refresh-rate to touch report-rate sync with a 10s watchdog for PLF110/S3910.
+id=plf110_touch_rate_sync
+name=PLF110 Touch-Rate-Sync
+version=v1.0.7
+versionCode=10007
+author=lenluxue
+description=PLF110/S3910 KernelSU 触控上报率同步：低开销 BusyBox 后台，3 秒显示轮询与 1.5 秒触控读回。
 
